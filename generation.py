@@ -10,7 +10,8 @@ import analogy_generation
 
 init_generator = dict(analogies=analogy_generation.init_generator)
 do_generate = dict(analogies=analogy_generation.do_generate)
+trial_generate = dict(analogies=analogy_generation.trial_generate)
 
 def get_generator(generator_name, generator_file):
-    return do_generate[generator_name], init_generator[generator_name](generator_file)
+    return do_generate[generator_name], init_generator[generator_name](generator_file), trial_generate[generator_name]
 

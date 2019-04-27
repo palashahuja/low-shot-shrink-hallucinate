@@ -18,6 +18,8 @@ def parse_args():
     parser.add_argument('--wd', default=0.001, type=float)
     parser.add_argument('--max_per_label', default=0, type=int)
     parser.add_argument('--matchingnetwork', default=0,type=int)
+    parser.add_argument('--generator_type', default=0, type=int)
+    parser.add_argument('--model_index', default=0, type=int)
     return parser.parse_args()
 
 
@@ -26,7 +28,7 @@ if __name__=='__main__':
     if args.matchingnetwork:
         outpath='MN_{}_expid_{:d}_lowshotn_{:d}.json'
     else:
-        outpath = '{}_' + 'lr_{:.3f}_wd_{:.3f}'.format(args.lr, args.wd) + '_expid_{:d}_lowshotn_{:d}_' + 'maxgen_{:d}.json'.format(args.max_per_label)
+        outpath = '{}_' + 'lr_{:.3f}_wd_{:.3f}'.format(args.lr, args.wd) + '_expid_{:d}_lowshotn_{:d}_' + 'maxgen_{:d}_'.format(args.max_per_label) + 'g_type{:d}_mind_{:d}.json'.format(args.generator_type, args.model_index)
     lowshotns = [1,2,5,10,20]
     expids = [1,2,3,4,5]
     all_nums = np.zeros((len(lowshotns), len(expids), 6))

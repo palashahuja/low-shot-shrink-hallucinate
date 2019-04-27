@@ -32,7 +32,7 @@ class SimpleHDF5Dataset:
 # a dataset to allow for category-uniform sampling of base and novel classes.
 # also incorporates hallucination
 class LowShotDataset:
-    def __init__(self, file_handle, base_classes, novel_classes, novel_idx, max_per_label=0, generator_fn=None, generator=None):
+    def __init__(self, file_handle, base_classes, novel_classes, novel_idx, max_per_label=0, generator_fn=None, generator=None, centroid_file=None, generator_index=0):
         self.f = file_handle
         self.all_feats_dset = self.f['all_feats']
         all_labels_dset = self.f['all_labels']
@@ -50,10 +50,13 @@ class LowShotDataset:
 
         # hallucinate if needed
         if max_per_label>0:
-            novel_feats, novel_labels = generator_fn(novel_feats, novel_labels, generator, max_per_label)
+            if generator_index == 1:
+                novel_feats, novel_labels = generator_fn(novel_feats, novel_labels, generator, centroid_file, max_per_label)
+            else:
+                novel_feats, novel_labels = generator_fn(novel_feats, novel_labels, generator, max_per_label)
+
         self.novel_feats = novel_feats
         self.novel_labels = novel_labels
-
 
         self.base_classes = base_classes
         self.novel_classes = novel_classes
@@ -85,9 +88,13 @@ def get_test_loader(file_handle, batch_size=1000):
     data_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
     return data_loader
 
-def training_loop(lowshot_dataset, num_classes, params, batchsize=1000, maxiters=1000):
+def training_loop(lowshot_dataset, num_classes, params, batchsize=1000, maxiters=1000, index=0):
     featdim = lowshot_dataset.featdim()
-    model = nn.Linear(featdim, num_classes)
+    model_list = [nn.Sequential(nn.Linear(featdim, 256), nn.ReLU(True), nn.Linear(256, 512), nn.ReLU(True), nn.Linear(512, num_classes)), \
+    nn.Sequential(nn.Linear(featdim, 256), nn.ReLU(True), nn.Linear(256, 256), nn.ReLU(True), nn.Linear(256, num_classes)), \
+    nn.Sequential(nn.Linear(featdim, 256), nn.ReLU(True), nn.Linear(256, num_classes)), \
+    nn.Linear(featdim, num_classes)]
+    model = model_list[index]
     model = model.cuda()
     optimizer = torch.optim.SGD(model.parameters(), params.lr, momentum=params.momentum, dampening=params.momentum, weight_decay=params.wd)
 
@@ -162,7 +169,9 @@ def parse_args():
     parser.add_argument('--max_per_label', default=0, type=int, help='number to generate')
     parser.add_argument('--generator_name', default='', type=str, help='type of generator')
     parser.add_argument('--generator_file', default='', type=str, help='file containing trained generator')
-
+    parser.add_argument('--centroid_file', default='', type=str, help='file containing centroids')
+    parser.add_argument('--model_index', default=0, type=int, help='index for model')
+    parser.add_argument('--generator_type', default=0, type=int, help='index for generator')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -187,22 +196,25 @@ if __name__ == '__main__':
     generator_fn=None
 
     if params.generator_name!='':
-        generator_fn, generator = generation.get_generator(params.generator_name, params.generator_file)
+        generator_fn, generator, trial_gen = generation.get_generator(params.generator_name, params.generator_file)
 
 
     with h5py.File(params.trainfile, 'r') as f:
-        lowshot_dataset = LowShotDataset(f, base_classes, novel_classes, novel_idx, params.max_per_label, generator_fn, generator)
-        model = training_loop(lowshot_dataset, params.numclasses, params, params.batchsize, params.maxiters)
+        if params.generator_type == 1:
+            lowshot_dataset = LowShotDataset(f, base_classes, novel_classes, novel_idx, params.max_per_label, trial_gen, generator, centroid_file=params.centroid_file, generator_index=params.generator_type)
+        else:
+            lowshot_dataset = LowShotDataset(f, base_classes, novel_classes, novel_idx, params.max_per_label, generator_fn, generator, centroid_file=params.centroid_file, generator_index=params.generator_type)
+        model = training_loop(lowshot_dataset, params.numclasses, params, params.batchsize, params.maxiters, index=params.model_index)
 
-    print('trained')
     with h5py.File(params.testfile, 'r') as f:
         test_loader = get_test_loader(f)
         accs = eval_loop(test_loader, model, base_classes, novel_classes)
 
     modelrootdir = os.path.basename(os.path.dirname(params.trainfile))
-    outpath = os.path.join(params.outdir, modelrootdir+'_lr_{:.3f}_wd_{:.3f}_expid_{:d}_lowshotn_{:d}_maxgen_{:d}.json'.format(
-                                    params.lr, params.wd, params.experimentid, params.lowshotn, params.max_per_label))
+    outpath = os.path.join(params.outdir, modelrootdir+'_lr_{:.3f}_wd_{:.3f}_expid_{:d}_lowshotn_{:d}_maxgen_{:d}_g_type{:d}_mind_{:d}.json'.format(
+                                    params.lr, params.wd, params.experimentid, params.lowshotn, params.max_per_label, params.generator_type, params.model_index))
     with open(outpath, 'w') as f:
         json.dump(dict(lr=params.lr,wd=params.wd, expid=params.experimentid, lowshotn=params.lowshotn, accs=accs.tolist()),f)
+
 
 

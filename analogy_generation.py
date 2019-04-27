@@ -311,6 +311,80 @@ def do_generate(feats, labels, generator, max_per_label):
         return np.concatenate((feats, gen_feats), axis=0), np.concatenate((labels, gen_labels), axis=0)
     else:
         return feats, labels
+# will consist of all base classes
+def find_dist(feat_A, feat_B, num_gen):
+    # squeeze the single dimension out of feature b
+    feat_B = np.squeeze(feat_B)
+    # reshape feat A to be 1d vector
+    feat_A = feat_A.reshape((1, -1))
+    # subtract feature a from feature b for all the base classes
+    diff_vector = np.exp(np.sum(-np.power(feat_B - feat_A, 2), axis=1)) 
+    # normalize this vector 
+    diff_i_norm = np.sum(diff_vector, axis=0, keepdims=True)
+    diff_vector = diff_vector/(diff_i_norm + 0.00001)
+    # do argmax and find the top k 
+    return np.argpartition(diff_vector, num_gen)[:num_gen]
+
+
+def trial_generate(feats, labels, generator, centroid_file, max_per_label):
+    unique_labels = np.unique(labels)
+    generations_needed = []
+    generator['concatenated_centroids'] = generator['concatenated_centroids'].numpy()
+    # load the centroids
+    with open(centroid_file, 'rb') as f:
+        centroids = np.array(pickle.load(f))
+
+    for k, lab in enumerate(unique_labels):
+        # for each label
+        idx = np.where(labels==lab)[0]
+        # generate this many examples:
+        num_to_gen = max(max_per_label - idx.size,0)
+        if num_to_gen>0:
+            # find the novel classes belonging to the particular label of the novel class
+            novel_class_feats = feats[idx, :]
+            # create a centroid for this novel class
+            novel_class_centroid = novel_class_feats.mean(axis=0)
+
+            # choose a seed as well
+            seed = np.random.choice(idx, num_to_gen)
+            # find the nearest base classes according to the distance criteria
+            # for a particular novel class centroid 
+            nearest_base = find_dist(novel_class_centroid, centroids, num_to_gen)
+            c_c = np.random.choice(generator['num_clusters_per_class'], num_to_gen)
+            c_d = np.random.choice(generator['num_clusters_per_class'], num_to_gen)
+            centroid_ids_c = nearest_base*generator['num_clusters_per_class'] + c_c
+            centroid_ids_d = nearest_base*generator['num_clusters_per_class'] + c_d
+            # add to list of things to generate
+            generations_needed.append( np.concatenate((seed.reshape((-1,1)), centroid_ids_c.reshape((-1,1)), centroid_ids_d.reshape((-1,1))),axis=1))
+
+
+    if len(generations_needed)>0:
+        generations_needed = np.concatenate(generations_needed, axis=0)
+        gen_feats = np.zeros((generations_needed.shape[0],feats.shape[1]))
+        gen_labels = np.zeros(generations_needed.shape[0])
+
+
+        # batch up the generations
+        batchsize=1000
+        for start in range(0, generations_needed.shape[0], batchsize):
+            stop = min(start + batchsize, generations_needed.shape[0])
+            g_idx = generations_needed[start:stop,:]
+            A = Variable(torch.Tensor(feats[g_idx[:,0],:])).cuda()
+            C = Variable(torch.Tensor(generator['concatenated_centroids'][g_idx[:,1],:])).cuda()
+            D = Variable(torch.Tensor(generator['concatenated_centroids'][g_idx[:,2],:])).cuda()
+            F = generator['model'](A,C,D).cpu().data.numpy().copy()
+            gen_feats[start:stop,:] = F
+            print(np.linalg.norm(F-feats[g_idx[:,0],:]), np.linalg.norm(F), np.linalg.norm(feats[g_idx[:,0],:]))
+            gen_labels[start:stop] = labels[g_idx[:,0]]
+
+        return np.concatenate((feats, gen_feats), axis=0), np.concatenate((labels, gen_labels), axis=0)
+    else:
+        return feats, labels
+
+
+
+
+
 
 
 def init_generator(generator_file):
@@ -321,12 +395,3 @@ def init_generator(generator_file):
     model = model.cuda()
     G['model'] =model
     return G
-
-
-
-
-
-
-
-
-
