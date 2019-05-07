@@ -7,6 +7,17 @@ arxiv 2016.
 
 You can find trained models [here](https://dl.fbaipublicfiles.com/low-shot-shrink-hallucinate/models.zip).
 
+## New Results (Our Updated Results for the project)
+
+| Model                                    	| n=1   	| n=2   	| n=5   	| n = 10 	| n = 20 	|
+|------------------------------------------	|-------	|-------	|-------	|--------	|--------	|
+| Model mentioned in [7]                   	| 32.8  	| 46.4  	| 61.7  	| 69.7   	| 73.8   	|
+| Our model with Softmax Heuristic         	| 34.28 	| 47.52 	| 62.31 	| 70.08  	| 74.13  	|
+| Our model with Cosine Distance Heuristic 	| 34.11 	| 47.54 	| 62.29 	| 70.16  	| 74.05  	|
+
+
+
+
 
 ## Prerequisites
 This code uses [pytorch](http://pytorch.org/), [numpy](http://www.numpy.org/) and [h5py](http://www.h5py.org/). It requires GPUs and Cuda.
@@ -251,6 +262,5 @@ _Top-5, All classes_
 | SGM (Resnet 50)	  |  Baseline	       | 60.02	| 71.28	| 79.95	| 83.27	 | 85.19 |
 | SGM (Resnet 50)     |  Generation	       | 63.60	| 71.53	| 79.95	| 83.27	 | 85.16 |
 
-## Our Results
 
 
