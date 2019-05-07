@@ -17,11 +17,11 @@ You can find trained models [here](https://dl.fbaipublicfiles.com/low-shot-shrin
 
 ## Accuracy plots
 
-![Accuracy plot 1](./images/Figure1.png)
-![Accuracy plot 2](./images/Figure2.png)
-![Accuracy plot 3](./images/Figure3.png)
-![Accuracy plot 4](./images/Figure4.png)
-![Accuracy plot 5](./images/Figure5.png)
+![Accuracy plot 1](images/Figure1.png)
+![Accuracy plot 2](images/Figure2.png)
+![Accuracy plot 3](images/Figure3.png)
+![Accuracy plot 4](images/Figure4.png)
+![Accuracy plot 5](images/Figure5.png)
 
 
 ## Prerequisites
