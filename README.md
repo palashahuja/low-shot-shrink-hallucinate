@@ -15,8 +15,13 @@ You can find trained models [here](https://dl.fbaipublicfiles.com/low-shot-shrin
 | Our model with Softmax Heuristic         	| 34.28 	| 47.52 	| 62.31 	| 70.08  	| 74.13  	|
 | Our model with Cosine Distance Heuristic 	| 34.11 	| 47.54 	| 62.29 	| 70.16  	| 74.05  	|
 
+## Accuracy plots
 
-
+![Accuracy plot 1](images/Figure1.png)
+![Accuracy plot 2](images/Figure2.png)
+![Accuracy plot 3](images/Figure3.png)
+![Accuracy plot 4](images/Figure4.png)
+![Accuracy plot 5](images/Figure5.png)
 
 
 ## Prerequisites
