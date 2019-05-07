@@ -15,16 +15,7 @@ for prod in itertools.product(model_index, generator_index, low_shot_n, experime
    listing = glob.glob('lowshot_results/*fileid_' + str(index) + '.json')
    print('model index', prod[0], ' gen index', prod[1], ' low shot n', prod[2], ' exp id', prod[3])
    for filename in listing:
-       f = open(filename)
-       json_dict = json.loads(f.read())
-       accs = json_dict['accs']
-       print('Top 5 Novel')
-       print(accs[1])
-       print('Top 5 base')
-       print(accs[3])
-       print('Top 5 All')
-       print(accs[5]) 
-   print('\n')
+       os.rename(filename, 'lowshot_results/ResNet10_sgm_lr_1.000_wd_0.001_expid_' + str(prod[3]) + '_lowshotn_' + str(prod[2]) + '_maxgen_5_' + 'g_type' + str(prod[1]) + '_mind_'+ str(prod[0]) + '.json')
    index += 1 
 
    
