@@ -16,6 +16,8 @@ import os
 import h5py
 import pickle
 import torch_kmeans
+from numpy.linalg import norm
+
 class AnalogyRegressor(nn.Module):
     def __init__(self, featdim, innerdim=512):
         super(AnalogyRegressor,self).__init__()
@@ -92,7 +94,6 @@ def mine_analogies(centroids):
         diff_i = get_difference_vectors(c_i)
         diff_i_t = torch.Tensor(diff_i).cuda()
 
-
         bestdots = np.zeros(diff_i.shape[0])
         bestdotidx = np.zeros((diff_i.shape[0],2),dtype=int)
 
@@ -100,25 +101,21 @@ def mine_analogies(centroids):
         for j, c_j in enumerate(centroids):
             if i==j:
                 continue
-            print(i,j)
-
             # get normalized difference vectors
             diff_j = get_difference_vectors(c_j)
             diff_j = torch.Tensor(diff_j).cuda()
-
-            #compute cosine distance and take the maximum
+            diff_j_sq = 0.5*torch.sum(diff_j**2, 1)
             dots = diff_i_t.mm(diff_j.transpose(0,1))
+            dots = dots - diff_j_sq
             maxdots, argmaxdots = dots.max(1)
             maxdots = maxdots.cpu().numpy().reshape(-1)
             argmaxdots = argmaxdots.cpu().numpy().reshape(-1)
-
+            #compute cosine distance and take the maximum
             # if maximum is better than best seen so far, update
             betteridx = maxdots>bestdots
             bestdots[betteridx] = maxdots[betteridx]
             bestdotidx[betteridx,0] = j*n_clusters + I[argmaxdots[betteridx]]
             bestdotidx[betteridx,1] = j*n_clusters + J[argmaxdots[betteridx]]
-
-
         # store discovered analogies
         stop = start+diff_i.shape[0]
         analogies[start : stop,0]=i*n_clusters + I
@@ -312,6 +309,26 @@ def do_generate(feats, labels, generator, max_per_label):
     else:
         return feats, labels
 # will consist of all base classes
+'''
+def find_dist(feat_A, feat_B, num_gen):
+    # squeeze the single dimension out of feature b
+    feat_B = np.squeeze(feat_B)
+    # reshape feat A to be 1d vector
+    feat_A = feat_A.reshape((1, -1))
+    # subtract feature a from feature b for all the base classes
+    feat_A_copy = np.squeeze(np.array([feat_A]*feat_B.shape[0]))
+    # compute the norm of both the vectors
+    feat_A_norm = np.sqrt(np.sum(feat_A_copy**2, axis=1))
+    feat_B_norm = np.sqrt(np.sum(feat_B**2, axis=1))
+    # dot product 
+    feat_C = np.sum(feat_A_copy*feat_B, axis=1)
+    # divide it by the norm
+    feat_C = feat_C/(feat_A_norm*feat_B_norm)
+    # compute the difference by 1
+    feat_C = 1 - feat_C
+    # see the top num_gen labels
+    return np.argpartition(feat_C, num_gen)[:num_gen]
+'''
 def find_dist(feat_A, feat_B, num_gen):
     # squeeze the single dimension out of feature b
     feat_B = np.squeeze(feat_B)
@@ -323,7 +340,7 @@ def find_dist(feat_A, feat_B, num_gen):
     diff_i_norm = np.sum(diff_vector, axis=0, keepdims=True)
     diff_vector = diff_vector/(diff_i_norm + 0.00001)
     # do argmax and find the top k 
-    return np.argpartition(diff_vector, num_gen)[:num_gen]
+    return np.argpartition(diff_vector, -num_gen)[-num_gen:]
 
 
 def trial_generate(feats, labels, generator, centroid_file, max_per_label):
